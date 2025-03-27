@@ -1,18 +1,18 @@
 ROLES DEL EQUIPO:
 
 Juan Esteban Díaz: Líder del proyecto
-Jose Manuel Botello: Líder de datos
-Samuel Ramírez: Líder de analítica
+Jose Manuel Botello: Ingeniero de Software aplicación final
+Samuel Ramírez: Líder de Ingeniero de Software API
 
 TAREAS REALIZADAS POR EL EQUIPO Y DISTRIBUCIÓN DE PUNTOS:
 
 Juan Esteban Díaz: Construcción del Pipeline. 34 puntos
 
-Jose Manuel Botello: . 33 puntos
+Jose Manuel Botello: Formato y limpieza del diseño final de la aplicación. 33 puntos
 
-Samuel Ramírez: . 33 puntos
+Samuel Ramírez: Diseño de la aplicación. 33 puntos
 
-Reunión de lanzamiento y planeación: 8 de febrero, se cuadraron canales de comunicación (server en discord y grupo de whatsapp)
-Reunión de ideación: 11 de febrero, se esocgieron los algoritmos más útiles para el proyecto.
-Reuniones de seguimiento: 19 de febrero, implementación de los algoritmos escogidos.
-Reunión de finalización: 22 de febrero, revisión de código, arreglar errores, grabación de video.
+Reunión de lanzamiento y planeación: 20 de marzo, se cuadraron canales de comunicación (server en discord y grupo de whatsapp)
+Reuniones de seguimiento: 24 de marzo, revisión de la implementación del Pipeline para poder revisar cambios y tener una idea previa de la aplicación.
+Reunión de entrega: 27 de marzo, entrega del Pipeline para que pueda desarrollarse la aplicación.
+Reunión de finalización: 29 de marzo, revisión de la aplicación, arreglar errores, grabación de video y entrega del proyecto.
