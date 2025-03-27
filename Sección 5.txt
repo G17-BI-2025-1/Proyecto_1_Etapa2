@@ -1,0 +1,18 @@
+ROLES DEL EQUIPO:
+
+Juan Esteban Díaz: Líder del proyecto
+Jose Manuel Botello: Líder de datos
+Samuel Ramírez: Líder de analítica
+
+TAREAS REALIZADAS POR EL EQUIPO Y DISTRIBUCIÓN DE PUNTOS:
+
+Juan Esteban Díaz: Construcción del Pipeline. 34 puntos
+
+Jose Manuel Botello: . 33 puntos
+
+Samuel Ramírez: . 33 puntos
+
+Reunión de lanzamiento y planeación: 8 de febrero, se cuadraron canales de comunicación (server en discord y grupo de whatsapp)
+Reunión de ideación: 11 de febrero, se esocgieron los algoritmos más útiles para el proyecto.
+Reuniones de seguimiento: 19 de febrero, implementación de los algoritmos escogidos.
+Reunión de finalización: 22 de febrero, revisión de código, arreglar errores, grabación de video.
