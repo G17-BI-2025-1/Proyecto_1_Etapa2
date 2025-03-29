@@ -58,14 +58,16 @@ def retrain(datamodel:DataModel):
    df = app.state.df
 
    
-   expected_columns = ["Titulo", "Descripcion"] 
+   expected_columns = ["Titulo", "Descripcion","Label"]
+
    if not all(col in df.columns for col in expected_columns):
         raise HTTPException(status_code=400, detail=f"Las columnas deben ser {expected_columns}")
     
    model = load("assets/modelo.joblib")
 
-   predictions = model.fit_predict(df[expected_columns])
-   return {"predictions": predictions.tolist()}
+   predictions = model.fit_predict(df[["Titulo", "Descripcion"]],df["Label"])
+   score = model.score(df[["Titulo", "Descripcion"]],df["Label"])
+   return {"predictions": predictions.tolist(),"score":score}
 
 @app.post("/anadirdatos/")
 def adddata(datamodel:DataModel):
@@ -76,17 +78,19 @@ def adddata(datamodel:DataModel):
    df = app.state.df
 
    
-   expected_columns = ["Titulo", "Descripcion"] 
+   expected_columns = ["Titulo", "Descripcion","Label"] 
    if not all(col in df.columns for col in expected_columns):
         raise HTTPException(status_code=400, detail=f"Las columnas deben ser {expected_columns}")
     
    model = load("assets/modelo.joblib")
    modelo_viejo = model
-   modelo_nuevo = model.fit(df[expected_columns])
+   modelo_nuevo = model.fit(df[["Titulo", "Descripcion"]],df["Label"])
    modelo_combinado = VotingClassifier(estimators=[('old', modelo_viejo), ('new', modelo_nuevo)],voting='soft')
    datos = model.transform(df)
    predictions = modelo_combinado.predict(datos)
-   return {"predictions": predictions.tolist()}
+   score = modelo_combinado.score(df[["Titulo", "Descripcion"]],df["Label"])
+
+   return {"predictions": predictions.tolist(),"predictions": predictions.tolist(),"score":score}
     
    
 
