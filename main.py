@@ -2,6 +2,7 @@ from typing import Optional, List
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
 import io
+from sklearn.ensemble import VotingClassifier
 
 from joblib import load
 
@@ -21,7 +22,7 @@ def read_root():
 def read_item(item_id: int, q: Optional[str] = None):
    return {"item_id": item_id, "q": q}
 
-@app.post("/predictjson")
+@app.post("/predictjson/")
 def make_predictions(data_list: List[DataModel]):
    
     df = pd.DataFrame([data.dict() for data in data_list])
@@ -32,8 +33,8 @@ def make_predictions(data_list: List[DataModel]):
 
     return {"predictions": predictions}
 
-@app.post("/predictarchivo")
-def retrain(dataModel: DataModel):
+@app.post("/predictarchivo/")
+def make_prediction_arch(dataModel: DataModel):
     if not hasattr(app.state, "df"):
         raise HTTPException(status_code=400, detail="No se ha subido ningún archivo CSV")
     
@@ -48,6 +49,45 @@ def retrain(dataModel: DataModel):
     
     predictions = model.predict(df[expected_columns])
     return {"predictions": predictions.tolist()}
+
+@app.post("/reentrenarmodelo/")
+def retrain(datamodel:DataModel):
+   if not hasattr(app.state, "df"):
+        raise HTTPException(status_code=400, detail="No se ha subido ningún archivo CSV")
+    
+   df = app.state.df
+
+   
+   expected_columns = ["Titulo", "Descripcion"] 
+   if not all(col in df.columns for col in expected_columns):
+        raise HTTPException(status_code=400, detail=f"Las columnas deben ser {expected_columns}")
+    
+   model = load("assets/modelo.joblib")
+
+   predictions = model.fit_predict(df[expected_columns])
+   return {"predictions": predictions.tolist()}
+
+@app.post("/anadirdatos/")
+def adddata(datamodel:DataModel):
+   if not hasattr(app.state, "df"):
+        raise HTTPException(status_code=400, detail="No se ha subido ningún archivo CSV")
+
+    
+   df = app.state.df
+
+   
+   expected_columns = ["Titulo", "Descripcion"] 
+   if not all(col in df.columns for col in expected_columns):
+        raise HTTPException(status_code=400, detail=f"Las columnas deben ser {expected_columns}")
+    
+   model = load("assets/modelo.joblib")
+   modelo_viejo = model
+   modelo_nuevo = model.fit(df[expected_columns])
+   modelo_combinado = VotingClassifier(estimators=[('old', modelo_viejo), ('new', modelo_nuevo)],voting='soft')
+   datos = model.transform(df)
+   predictions = modelo_combinado.predict(datos)
+   return {"predictions": predictions.tolist()}
+    
    
 
 @app.post("/subirarchivo/")
