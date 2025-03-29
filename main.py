@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Union
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
 import io
@@ -8,14 +8,14 @@ from joblib import load
 
 import pandas as pd
 
-import DataModel
+from DataModel import DataModel
 
 app = FastAPI()
 
 
 @app.get("/")
 def read_root():
-   return {"Hello": "World"}
+   return {"Hello": "World"} 
 
 
 @app.get("/items/{item_id}")
@@ -23,7 +23,7 @@ def read_item(item_id: int, q: Optional[str] = None):
    return {"item_id": item_id, "q": q}
 
 @app.post("/predictjson/")
-def make_predictions(data_list: List[DataModel]):
+def make_predictions(data_list:List[DataModel]):
    
     df = pd.DataFrame([data.dict() for data in data_list])
     model = load("assets/modelo.joblib")
