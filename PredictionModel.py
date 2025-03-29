@@ -8,3 +8,6 @@ class Model:
     def make_predictions(self, data):
         result = self.model.predict(data)
         return result
+    
+    def reentrenar(self,data):
+        result = self.model.transform(data)
