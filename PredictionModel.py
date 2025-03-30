@@ -2,13 +2,15 @@ import re
 
 import pandas as pd
 
-nlp = spacy.load("es_core_news_sm")
+
 
 import unicodedata
 
 import num2words
 
 import spacy
+
+nlp = spacy.load("es_core_news_sm")
 
 def limpiar_ascii(train):
 

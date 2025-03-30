@@ -193,8 +193,10 @@ def adddata(datamodel:DataModel):
 @app.post("/subirarchivo/")
 async def subir_archivo(file: UploadFile = File(...)):
     
-    contents = await file.read()
-    df = pd.read_csv(contents, sep=";", encoding="ISO-8859-1")
+    print(file)
+    contents = file.file
+    print(contents)
+    df = pd.read_csv(contents , sep=";")
 
     
     app.state.df = df
