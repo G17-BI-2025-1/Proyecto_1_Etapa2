@@ -1,3 +1,4 @@
+// src/components/TextAnalyzer.tsx
 import React, { useState, useEffect } from 'react';
 import { useNewsAnalysis } from '../hooks/useNewsAnalysis';
 
@@ -6,7 +7,8 @@ interface TextAnalyzerProps {
 }
 
 const TextAnalyzer: React.FC<TextAnalyzerProps> = ({ onAnalysisComplete }) => {
-  const [text, setText] = useState<string>('');
+  const [title, setTitle] = useState<string>('');
+  const [body, setBody] = useState<string>('');
   const { analyzeText, loadExamples, examples, isLoading } = useNewsAnalysis();
 
   // Cargar ejemplos al montar el componente
@@ -16,12 +18,18 @@ const TextAnalyzer: React.FC<TextAnalyzerProps> = ({ onAnalysisComplete }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await analyzeText(text);
+    // Modificar para enviar tanto el título como el cuerpo
+    await analyzeText({ title, body });
     onAnalysisComplete();
   };
 
   const handleExampleClick = (exampleText: string) => {
-    setText(exampleText);
+    // Para simplificar, usamos el ejemplo completo como cuerpo
+    // y generamos un título basado en las primeras palabras
+    const words = exampleText.split(' ');
+    const exampleTitle = words.slice(0, 5).join(' ') + '...';
+    setTitle(exampleTitle);
+    setBody(exampleText);
   };
 
   return (
@@ -29,16 +37,33 @@ const TextAnalyzer: React.FC<TextAnalyzerProps> = ({ onAnalysisComplete }) => {
       <h2 className="mb-3">Analizar Texto</h2>
       
       <form onSubmit={handleSubmit}>
+        {/* Campo para el título de la noticia */}
         <div className="form-group">
-          <label htmlFor="newsText" className="form-label">
-            Ingresa el texto de la noticia que deseas analizar
+          <label htmlFor="newsTitle" className="form-label">
+            Título de la noticia
+          </label>
+          <input
+            id="newsTitle"
+            className="form-control"
+            type="text"
+            placeholder="Ingresa el título de la noticia..."
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+          />
+        </div>
+        
+        {/* Campo para el cuerpo de la noticia */}
+        <div className="form-group mt-3">
+          <label htmlFor="newsBody" className="form-label">
+            Cuerpo de la noticia
           </label>
           <textarea
-            id="newsText"
+            id="newsBody"
             className="form-control textarea"
-            placeholder="Pega o escribe aquí el contenido de la noticia..."
-            value={text}
-            onChange={(e) => setText(e.target.value)}
+            placeholder="Ingresa el contenido completo de la noticia..."
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
             required
           />
           <small className="text-muted">
@@ -50,14 +75,17 @@ const TextAnalyzer: React.FC<TextAnalyzerProps> = ({ onAnalysisComplete }) => {
           <button 
             type="button" 
             className="btn btn-outline"
-            onClick={() => setText('')}
+            onClick={() => {
+              setTitle('');
+              setBody('');
+            }}
           >
             Limpiar
           </button>
           <button 
             type="submit" 
             className="btn btn-primary"
-            disabled={isLoading || !text.trim()}
+            disabled={isLoading || !title.trim() || !body.trim()}
           >
             {isLoading ? 'Analizando...' : 'Analizar Texto'}
           </button>

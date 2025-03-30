@@ -1,6 +1,6 @@
+// src/components/ResultsDisplay.tsx
 import React from 'react';
 import { NewsAnalysis, BatchAnalysisResult } from '../types';
-import NewsCard from './NewsCard';
 
 interface ResultsDisplayProps {
   singleAnalysis: NewsAnalysis | null;
@@ -37,7 +37,43 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
           </button>
         </div>
         
-        <NewsCard news={singleAnalysis} />
+        <div className={`card ${singleAnalysis.is_fake ? 'border-danger' : 'border-success'}`} 
+             style={{ borderLeft: `4px solid ${singleAnalysis.is_fake ? '#f72585' : '#38b000'}` }}>
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <span 
+              style={{ 
+                background: singleAnalysis.is_fake ? '#f72585' : '#38b000',
+                color: 'white',
+                padding: '4px 12px',
+                borderRadius: '20px',
+                fontWeight: 'bold',
+                fontSize: '0.875rem'
+              }}
+            >
+              {singleAnalysis.is_fake ? 'NOTICIA FALSA' : 'NOTICIA REAL'}
+            </span>
+            <span>Confianza: {singleAnalysis.probability}%</span>
+          </div>
+          
+          <p className="mb-3">{singleAnalysis.text}</p>
+          
+          <div style={{ 
+            height: '8px', 
+            width: '100%', 
+            backgroundColor: '#e9ecef', 
+            borderRadius: '4px', 
+            overflow: 'hidden' 
+          }}>
+            <div 
+              style={{ 
+                height: '100%', 
+                width: `${singleAnalysis.probability}%`, 
+                backgroundColor: singleAnalysis.is_fake ? '#f72585' : '#38b000', 
+                borderRadius: '4px' 
+              }}
+            ></div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -57,7 +93,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
           <h3 className="mb-3">Resumen</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
             <div style={{ padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
-              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#4361ee', marginBottom: '0.25rem' }}>
+              <div style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.25rem' }}>
                 {batchAnalysis.summary.total}
               </div>
               <div className="text-muted">Total de noticias</div>
@@ -76,13 +112,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
               </div>
               <div className="text-muted">Noticias reales</div>
             </div>
-            
-            <div style={{ padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
-              <div style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.25rem' }}>
-                {batchAnalysis.summary.average_confidence.toFixed(2)}%
-              </div>
-              <div className="text-muted">Confianza promedio</div>
-            </div>
           </div>
         </div>
       )}
@@ -90,7 +119,44 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
       <h3 className="mb-3">Todos los resultados</h3>
       <div>
         {batchAnalysis?.items.map((news, index) => (
-          <NewsCard key={index} news={news} />
+          <div key={index} 
+               className={`card mb-3 ${news.is_fake ? 'border-danger' : 'border-success'}`}
+               style={{ borderLeft: `4px solid ${news.is_fake ? '#f72585' : '#38b000'}` }}>
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <span 
+                style={{ 
+                  background: news.is_fake ? '#f72585' : '#38b000',
+                  color: 'white',
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  fontWeight: 'bold',
+                  fontSize: '0.875rem'
+                }}
+              >
+                {news.is_fake ? 'NOTICIA FALSA' : 'NOTICIA REAL'}
+              </span>
+              <span>Confianza: {news.probability}%</span>
+            </div>
+            
+            <p className="mb-2">{news.text}</p>
+            
+            <div style={{ 
+              height: '8px', 
+              width: '100%', 
+              backgroundColor: '#e9ecef', 
+              borderRadius: '4px', 
+              overflow: 'hidden' 
+            }}>
+              <div 
+                style={{ 
+                  height: '100%', 
+                  width: `${news.probability}%`, 
+                  backgroundColor: news.is_fake ? '#f72585' : '#38b000', 
+                  borderRadius: '4px' 
+                }}
+              ></div>
+            </div>
+          </div>
         ))}
       </div>
     </div>
