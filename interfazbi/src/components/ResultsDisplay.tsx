@@ -112,6 +112,47 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
               </div>
               <div className="text-muted">Noticias reales</div>
             </div>
+
+            <div style={{ padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
+              <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#3a86ff', marginBottom: '0.25rem' }}>
+                {((batchAnalysis.summary.real_count / batchAnalysis.summary.total) * 100).toFixed(1)}%
+              </div>
+              <div className="text-muted">Índice de veracidad</div>
+            </div>
+          </div>
+
+          {/* Gráfico de distribución */}
+          <div className="mt-4">
+            <h4>Distribución de noticias</h4>
+            <div style={{ 
+              height: '30px', 
+              width: '100%', 
+              backgroundColor: '#e9ecef', 
+              borderRadius: '4px', 
+              overflow: 'hidden',
+              display: 'flex'
+            }}>
+              <div 
+                style={{ 
+                  height: '100%', 
+                  width: `${(batchAnalysis.summary.fake_count / batchAnalysis.summary.total) * 100}%`, 
+                  backgroundColor: '#f72585'
+                }}
+                title={`Noticias falsas: ${batchAnalysis.summary.fake_count}`}
+              ></div>
+              <div 
+                style={{ 
+                  height: '100%', 
+                  width: `${(batchAnalysis.summary.real_count / batchAnalysis.summary.total) * 100}%`, 
+                  backgroundColor: '#38b000'
+                }}
+                title={`Noticias reales: ${batchAnalysis.summary.real_count}`}
+              ></div>
+            </div>
+            <div className="d-flex justify-content-between mt-2">
+              <div><span style={{ color: '#f72585', fontWeight: 'bold' }}>■</span> Noticias falsas</div>
+              <div><span style={{ color: '#38b000', fontWeight: 'bold' }}>■</span> Noticias reales</div>
+            </div>
           </div>
         </div>
       )}

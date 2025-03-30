@@ -31,9 +31,10 @@ from joblib import load
 app = FastAPI()
 
 from fastapi.middleware.cors import CORSMiddleware
+# Configuración CORS simplificada pero efectiva
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # URL de tu frontend
+    allow_origins=["*"],  # Cambia esto a tu dominio en producción
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -52,11 +53,7 @@ class LimpiarTexto(BaseEstimator, TransformerMixin):
         return self
     
     def transform(self, train):
-        
-
         train = train.copy()
-
-        
 
         train["Titulo"] = train["Titulo"].apply(lambda x: unicodedata.normalize("NFKD", x).encode("ascii", "ignore").decode("utf-8"))
         train["Descripcion"] = train["Descripcion"].apply(lambda x: unicodedata.normalize("NFKD", x).encode("ascii", "ignore").decode("utf-8"))
@@ -117,94 +114,195 @@ app.state.pipeline = pipeline_m = Pipeline(
     ]
 )
 
-
-
 app.state.dataframe = pd.read_csv("./data/fake_news_spanish.csv" , sep=";")
 app.state.X_train, app.state.X_test, app.state.y_train , app.state.y_test = train_test_split(app.state.dataframe, app.state.dataframe["Label"], test_size=0.3, random_state=1)
 
-
 app.state.model = load("model.pkl")   
-    
-
-
 
 @app.get("/")
 def read_root():
    return {"Hello": "World"} 
-
 
 @app.get("/items/{item_id}")
 def read_item(item_id: int, q: Optional[str] = None):
    return {"item_id": item_id, "q": q}
 
 @app.post("/predictjson/")
-def make_predictions(data_list:List[DataModel]):
+async def make_predictions(data_list:List[DataModel]):
+    # Log para depuración
+    print(f"Recibiendo datos para predictjson: {data_list}")
 
     df = pd.DataFrame([data.dict() for data in data_list])
     
     datos = app.state.pipeline[:-1].transform(df)
     
     predictions = app.state.model.predict(datos).tolist()
+    
+    # Log para depuración
+    print(f"Predicciones: {predictions}")
 
     return {"predictions": predictions}
 
 @app.post("/predictarchivo/")
-def make_prediction_arch():
+async def make_prediction_arch():
     if not hasattr(app.state, "df"):
         raise HTTPException(status_code=400, detail="No se ha subido ningún archivo CSV")
     
+    # Log para depuración
+    print("Procesando archivo subido para análisis")
+    
     df = app.state.df
 
-    
-
-   
+    # Verificar que las columnas necesarias estén presentes
     expected_columns = ["Titulo", "Descripcion"] 
     if not all(col in df.columns for col in expected_columns):
         raise HTTPException(status_code=400, detail=f"Las columnas deben ser {expected_columns}")
     
-    model = load("model.pkl")
-
-    datos = app.state.pipeline[:-1].transform(df)
-
-    print(datos)
+    # Asegurarse de que las columnas son del tipo correcto
+    df["Titulo"] = df["Titulo"].astype(str)
+    df["Descripcion"] = df["Descripcion"].astype(str)
     
-    predictions = model.predict(datos)
-    return {"predictions": predictions.tolist()}
+    # Eliminar filas con valores vacíos en campos importantes
+    df = df.dropna(subset=["Titulo", "Descripcion"]).reset_index(drop=True)
+    
+    # Si no quedan filas después de limpiar, devolver error
+    if len(df) == 0:
+        raise HTTPException(status_code=400, detail="No hay datos válidos para analizar después de limpiar el archivo")
+    
+    try:
+        model = load("model.pkl")
+        
+        # Preprocesar datos
+        try:
+            datos = app.state.pipeline[:-1].transform(df)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error al preprocesar los datos: {str(e)}")
+        
+        # Realizar predicciones
+        predictions = model.predict(datos)
+        
+        # Guardar textos originales para incluirlos en la respuesta
+        original_texts = []
+        for index, row in df.iterrows():
+            # Usar columnas adicionales si están disponibles
+            fecha = row.get('Fecha', '')
+            id_texto = row.get('ID', str(index + 1))
+            
+            texto = f"{row['Titulo']} - {row['Descripcion'][:100]}..."
+            if fecha:
+                texto = f"[{fecha}] {texto}"
+            if id_texto:
+                texto = f"#{id_texto}: {texto}"
+                
+            original_texts.append(texto)
+        
+        # Log para depuración
+        print(f"Total de predicciones: {len(predictions)}")
+        
+        # Devolver no solo las predicciones sino también los textos originales
+        return {
+            "predictions": predictions.tolist(),
+            "texts": original_texts,
+            "summary": {
+                "total": len(predictions),
+                "fake_count": int(sum(predictions)),
+                "real_count": int(len(predictions) - sum(predictions))
+            }
+        }
+    except Exception as e:
+        print(f"Error al analizar el archivo: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error durante el análisis: {str(e)}")
 
 @app.post("/reentrenarmodelo/")
-def retrain():
-   if not hasattr(app.state, "df"):
-        raise HTTPException(status_code=400, detail="No se ha subido ningún archivo CSV")
-    
-   df = app.state.df
-
+async def retrain():
+   try:
+       if not hasattr(app.state, "df"):
+            raise HTTPException(status_code=400, detail="No se ha subido ningún archivo CSV")
+        
+       print("Iniciando proceso de reentrenamiento del modelo")
+       df = app.state.df
+       
+       # Comprobar que el DataFrame tiene las columnas necesarias
+       expected_columns = ["Titulo", "Descripcion", "Label"]
+       if not all(col in df.columns for col in expected_columns):
+            raise HTTPException(status_code=400, detail=f"Las columnas deben ser {expected_columns}")
+       
+       # Validar los valores en la columna Label
+       valid_labels = [0, 1]
+       invalid_labels = set(df["Label"].unique()) - set(valid_labels)
+       if invalid_labels:
+           raise HTTPException(status_code=400, detail=f"La columna 'Label' contiene valores no válidos: {invalid_labels}. Use 0 para noticias reales y 1 para noticias falsas.")
+       
+       # Limpiar datos
+       print("Limpiando y procesando los datos...")
+       df = df.dropna().reset_index(drop=True)
+       df = df.drop_duplicates().reset_index(drop=True)
+        
+       # Verificar que hay suficientes datos
+       if len(df) < 10:
+           raise HTTPException(status_code=400, detail=f"Se necesitan al menos 10 ejemplos para reentrenar el modelo. Proporcionados: {len(df)}")
+       
+       # Dividir en train/test
+       print(f"Dividiendo {len(df)} ejemplos en conjuntos de entrenamiento y prueba...")
+       X_train, X_test, y_train, y_test = train_test_split(df, df["Label"], test_size=0.3, random_state=1)
+       
+       print(f"Entrenando modelo con {len(X_train)} ejemplos...")
+       # Entrenar el modelo
+       try:
+           app.state.pipeline.fit(X_train, y_train)
+       except Exception as e:
+           print(f"Error durante el entrenamiento: {str(e)}")
+           raise HTTPException(status_code=500, detail=f"Error durante el entrenamiento del modelo: {str(e)}")
+       
+       print("Evaluando modelo en conjunto de prueba...")
+       # Transformar datos de prueba
+       app.state.pipeline[:-1].transform(X_test)
+       
+       # Obtener predicciones
+       predictions = app.state.pipeline.predict(X_test[["Titulo", "Descripcion"]])
+       
+       # Calcular precisión
+       score = app.state.pipeline.score(X_test[["Titulo", "Descripcion"]], y_test)
+       print(f"Precisión del modelo: {score:.4f}")
+       
+       # Guardar el modelo entrenado
+       try:
+           import joblib
+           print("Guardando modelo entrenado...")
+           joblib.dump(app.state.pipeline, "model_retrained.pkl")
+           print("Modelo guardado correctamente")
+       except Exception as e:
+           print(f"Advertencia: No se pudo guardar el modelo: {str(e)}")
+           # No fallamos aquí, solo registramos la advertencia
+       
+       # Preparar estadísticas adicionales
+       class_distribution = {
+           "total": len(df),
+           "fake_news": int(df["Label"].sum()),
+           "real_news": int(len(df) - df["Label"].sum())
+       }
+       
+       model_evaluation = {
+           "training_examples": len(X_train),
+           "test_examples": len(X_test),
+           "accuracy": float(score),
+           "correct_predictions": int(sum(predictions == y_test.values)),
+           "incorrect_predictions": int(sum(predictions != y_test.values))
+       }
+       
+       return {
+           "predictions": predictions.tolist(),
+           "score": float(score),
+           "class_distribution": class_distribution,
+           "model_evaluation": model_evaluation
+       }
    
-   expected_columns = ["Titulo", "Descripcion","Label"]
-
-   if not all(col in df.columns for col in expected_columns):
-        raise HTTPException(status_code=400, detail=f"Las columnas deben ser {expected_columns}")
-   
-   df = df.dropna().reset_index(drop=True)
-   df = df.drop_duplicates().reset_index(drop=True)
-    
-   X_train, X_test, y_train , y_test = train_test_split(df, df["Label"], test_size=0.3, random_state=1)
-
-   
-
-
-
-   app.state.pipeline.fit(X_train,y_train)
-
-   app.state.pipeline[:-1].transform(X_test)
-
-   predictions =  app.state.pipeline.predict(X_test[["Titulo", "Descripcion"]])
-
-   score = app.state.pipeline.score(X_test[["Titulo", "Descripcion"]],y_test)
-   
-   return {"predictions": predictions.tolist(),"score":score}
+   except Exception as e:
+       print(f"Error en reentrenamiento: {str(e)}")
+       raise HTTPException(status_code=500, detail=f"Error en el proceso de reentrenamiento: {str(e)}")
 
 @app.post("/anadirdatos/")
-def adddata():
+async def adddata():
     if not hasattr(app.state, "df"):
         raise HTTPException(status_code=400, detail="No se ha subido ningún archivo CSV")
    
@@ -246,23 +344,77 @@ def adddata():
     predictions = modelo_combinado.predict(X_test1)
     score = modelo_combinado.score(X_test1, y_test)
     
-    # Guardar el modelo combinado para uso futuro
-    
-    
     return {"predictions": predictions.tolist(), "score": score}
-    
-   
 
 @app.post("/subirarchivo/")
 async def subir_archivo(file: UploadFile = File(...)):
+    print(f"Recibiendo archivo: {file.filename}")
     
-    print(file)
-    contents = file.file
-    print(contents)
-    df = pd.read_csv(contents , sep=";")
-
+    contents = await file.read()
     
-    app.state.df = df
+    # Crear un objeto BytesIO para que pandas pueda leerlo
+    file_bytes = io.BytesIO(contents)
     
-    return {"filename": file.filename, "columns": df.columns.tolist()}
-
+    try:
+        # Intentar cargar con punto y coma primero (formato original)
+        try:
+            df = pd.read_csv(file_bytes, sep=";")
+        except Exception:
+            # Si falla, reiniciar el puntero del BytesIO e intentar con coma
+            file_bytes.seek(0)
+            df = pd.read_csv(file_bytes, sep=",")
+        
+        # Verificar y transformar las columnas según el formato mostrado
+        # Primero identificamos y estandarizamos las columnas
+        expected_standard_columns = ["ID", "Label", "Titulo", "Descripcion", "Fecha"]
+        
+        # Normalizar los nombres de columnas (caso insensible)
+        column_mapping = {}
+        for col in df.columns:
+            col_lower = col.lower()
+            if 'id' == col_lower:
+                column_mapping[col] = 'ID'
+            elif 'label' in col_lower or 'etiqueta' in col_lower:
+                column_mapping[col] = 'Label'
+            elif 'titulo' in col_lower or 'title' in col_lower:
+                column_mapping[col] = 'Titulo'
+            elif 'desc' in col_lower or 'contenido' in col_lower or 'content' in col_lower or 'text' in col_lower:
+                column_mapping[col] = 'Descripcion'
+            elif 'fecha' in col_lower or 'date' in col_lower:
+                column_mapping[col] = 'Fecha'
+        
+        # Renombrar columnas según el mapeo
+        if column_mapping:
+            df = df.rename(columns=column_mapping)
+        
+        # Verificar columnas esenciales
+        essential_columns = ["Titulo", "Descripcion"]
+        if "Label" in df.columns and "reentrenarmodelo" in file.filename.lower():
+            essential_columns.append("Label")
+            
+        missing_columns = [col for col in essential_columns if col not in df.columns]
+        if missing_columns:
+            raise Exception(f"Faltan columnas esenciales: {', '.join(missing_columns)}")
+        
+        # Verificar si hay datos suficientes
+        if len(df) == 0:
+            raise Exception("El archivo no contiene datos")
+        
+        # Si todo está correcto, guardamos el DataFrame
+        print(f"Archivo cargado con éxito. Columnas: {df.columns.tolist()}")
+        
+        # Asegurar que tenemos las columnas en el formato correcto
+        for col in essential_columns:
+            df[col] = df[col].astype(str)
+            
+        # Si hay columna Label, convertirla a numérica
+        if "Label" in df.columns:
+            df["Label"] = pd.to_numeric(df["Label"], errors="coerce").fillna(0).astype(int)
+        
+        # Guardar en el estado de la aplicación
+        app.state.df = df
+        
+        return {"filename": file.filename, "columns": df.columns.tolist()}
+    except Exception as e:
+        print(f"Error al procesar el archivo: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error al procesar el archivo: {str(e)}")
